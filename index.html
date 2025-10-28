@@ -1,14 +1,348 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Daniel Villegas — My GitHub Dashboard</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --muted:#94a3b8; --accent:#60a5fa; --glass: rgba(255,255,255,0.03);
+  }
+  html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+    background:linear-gradient(180deg,#071022 0%, #07132a 60%); color:#e6eef8;}
+  .container{max-width:1100px;margin:28px auto;padding:24px;}
+  header{display:flex;gap:20px;align-items:center; margin-bottom:18px;}
+  .avatar{width:84px;height:84px;border-radius:12px;background:linear-gradient(135deg,#1f2937,#111827);display:flex;align-items:center;justify-content:center;font-weight:700;color:#cbd5e1;font-size:24px;box-shadow:0 6px 18px rgba(2,6,23,0.6);}
+  h1{margin:0;font-size:28px;line-height:1.05;}
+  p.lead{color:var(--muted);margin:4px 0 0;}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 10px;}
+  input,button,select,textarea{padding:10px 12px;border-radius:10px;border:none;background:var(--glass);color:inherit;}
+  input[type="text"]{min-width:220px;}
+  button{cursor:pointer}
+  .grid{display:grid;grid-template-columns:1fr 360px;gap:18px;}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:16px;border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.6);}
+  .repo{padding:12px;border-radius:10px;margin-bottom:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);display:flex;justify-content:space-between;gap:12px;align-items:flex-start;}
+  .repo .left{flex:1}
+  .repo h3{margin:0;font-size:16px}
+  .repo p{margin:6px 0 0;color:var(--muted);font-size:13px}
+  .tags{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:12px;padding:6px 8px;border-radius:999px;background:rgba(255,255,255,0.03);color:var(--muted)}
+  .repo .actions{display:flex;flex-direction:column;gap:8px;align-items:end}
+  .small{font-size:12px;color:var(--muted)}
+  .repo-list{max-height:60vh;overflow:auto;padding-right:6px}
+  .right-column{position:relative}
+  .section-title{font-weight:600;margin-bottom:8px}
+  .modal{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:none;align-items:center;justify-content:center;padding:18px;z-index:80}
+  .modal .sheet{max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:18px;background:var(--card);border-radius:12px}
+  .note{font-size:13px;color:var(--muted);margin-top:8px}
+  .flex{display:flex;gap:10px;align-items:center}
+  footer{margin-top:18px;color:var(--muted);font-size:13px}
+  @media (max-width:900px){.grid{grid-template-columns:1fr;}.repo .actions{align-items:flex-start}}
+</style>
 </head>
 <body>
-    <h1>asdajfapisdjfa`jsdflañkjsda</h1>
-    <p>asdjfañlihsdfñljakhsdñfjhañsjdhfañkhjdfs</p>
-    <p>akdfklñasjdf´klja´lksd´lk</p>
-    
+  <div class="container">
+    <header>
+      <div class="avatar">DV</div>
+      <div>
+        <h1>Daniel Villegas</h1>
+        <p class="lead">Dashboard de GitHub — explora repositorios, lee README y más.</p>
+      </div>
+    </header>
+
+    <div class="controls">
+      <label class="flex">
+        <span class="small" style="margin-right:8px;">GitHub username</span>
+        <input id="username" type="text" placeholder="p.ej. github username (deja vacío para 'daniel')" />
+      </label>
+
+      <label class="flex">
+        <span class="small" style="margin-right:8px;">Filtro</span>
+        <input id="q" type="text" placeholder="buscar por nombre o descripción" />
+      </label>
+
+      <label class="flex">
+        <span class="small" style="margin-right:8px;">Orden</span>
+        <select id="sort">
+          <option value="updated">Última actualización</option>
+          <option value="stars">Más estrellas</option>
+          <option value="name">Nombre A–Z</option>
+        </select>
+      </label>
+
+      <button id="load">Cargar repositorios</button>
+
+      <label style="margin-left:auto;" class="flex">
+        <span class="small" style="margin-right:8px;">Token (opcional)</span>
+        <input id="token" type="text" placeholder="Pega token para acciones (no lo guardo)" style="min-width:260px"/>
+      </label>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section-title">Repositorios</div>
+        <div id="repoList" class="repo-list">
+          <div style="color:var(--muted)">No hay datos. Pulsa "Cargar repositorios" para empezar.</div>
+        </div>
+      </div>
+
+      <div class="right-column">
+        <div class="card">
+          <div class="section-title">Detalles / Vista rápida</div>
+          <div id="details">
+            <p class="small">Selecciona un repositorio para ver su README o acciones rápidas.</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:12px">
+          <div class="section-title">Consejos rápidos</div>
+          <ul class="small" style="margin:6px 0 0;padding-left:18px;color:var(--muted)">
+            <li>Puedes dejar el campo "GitHub username" vacío para usar <strong>daniel</strong> (asume nombre local).</li>
+            <li>Si pegas un token personal (scope: repo / public_repo), la página podrá llamar a la API para star/unstar. No lo guardo en servidor — solo memoria de la página.</li>
+            <li>Botones: "Clonar" copia la URL de clonación, "Ver README" muestra el README si existe, "Abrir" va a GitHub.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <footer>Creado para <strong>Daniel Villegas</strong>. Usa esta página en GitHub Pages o directamente en tu repo.</footer>
+  </div>
+
+  <!-- Modal para README -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <button id="closeModal" style="float:right">Cerrar</button>
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody" style="margin-top:12px;color:var(--muted)"></div>
+    </div>
+  </div>
+
+<script>
+(async function(){
+  const usernameInput = document.getElementById('username');
+  const loadBtn = document.getElementById('load');
+  const repoList = document.getElementById('repoList');
+  const qInput = document.getElementById('q');
+  const sortSelect = document.getElementById('sort');
+  const details = document.getElementById('details');
+  const tokenInput = document.getElementById('token');
+
+  // Helper: default username if empty
+  function getUsername(){
+    const val = (usernameInput.value || '').trim();
+    // si el usuario no escribe nada, usamos 'daniel' como fallback (puedes cambiar)
+    return val || 'daniel';
+  }
+
+  function showError(msg){
+    repoList.innerHTML = '<div style="color:#ffb4b4">' + msg + '</div>';
+  }
+
+  function el(html){ const d = document.createElement('div'); d.innerHTML=html; return d.firstElementChild;}
+
+  async function fetchRepos(user){
+    try{
+      const url = `https://api.github.com/users/${encodeURIComponent(user)}/repos?per_page=200`;
+      const res = await fetch(url);
+      if(res.status === 404) throw new Error('Usuario no encontrado en GitHub.');
+      if(!res.ok) throw new Error('Error al obtener repositorios: ' + res.status);
+      const data = await res.json();
+      return data;
+    }catch(e){
+      throw e;
+    }
+  }
+
+  function renderRepos(repos){
+    if(!repos || repos.length===0){
+      repoList.innerHTML = '<div style="color:var(--muted)">No se han encontrado repositorios.</div>';
+      return;
+    }
+    const q = qInput.value.trim().toLowerCase();
+    let list = repos.slice();
+
+    // Filtrado por texto
+    if(q){
+      list = list.filter(r => (r.name||'').toLowerCase().includes(q) || (r.description||'').toLowerCase().includes(q));
+    }
+
+    // Orden
+    const sortBy = sortSelect.value;
+    if(sortBy === 'updated'){
+      list.sort((a,b) => new Date(b.pushed_at) - new Date(a.pushed_at));
+    } else if(sortBy === 'stars'){
+      list.sort((a,b)=> b.stargazers_count - a.stargazers_count);
+    } else if(sortBy === 'name'){
+      list.sort((a,b)=> a.name.localeCompare(b.name));
+    }
+
+    repoList.innerHTML = '';
+    list.forEach(r => {
+      const node = el(`
+        <div class="repo">
+          <div class="left">
+            <h3><a href="${r.html_url}" target="_blank" style="color:inherit;text-decoration:none">${r.name}</a></h3>
+            <p>${r.description || ''}</p>
+            <div class="tags small">
+              <span class="tag">★ ${r.stargazers_count}</span>
+              <span class="tag">${r.forks_count} forks</span>
+              <span class="tag">${r.language || '—'}</span>
+            </div>
+          </div>
+          <div class="actions">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <button class="viewBtn">Ver README</button>
+              <button class="cloneBtn">Copiar URL Clonar</button>
+              <a class="openBtn" href="${r.html_url}" target="_blank"><button>Abrir en GitHub</button></a>
+              <button class="starBtn">${r.viewer_has_starred ? 'Unstar' : 'Star'}</button>
+            </div>
+          </div>
+        </div>
+      `);
+      // attach handlers
+      node.querySelector('.cloneBtn').addEventListener('click', ()=> {
+        const cloneUrl = r.clone_url;
+        navigator.clipboard.writeText(cloneUrl).then(()=> {
+          alert('URL de clonación copiada: ' + cloneUrl);
+        }).catch(()=> alert('No se pudo copiar automáticamente. URL: ' + cloneUrl));
+      });
+      node.querySelector('.viewBtn').addEventListener('click', ()=> openReadme(getUsername(), r.name, r));
+      node.querySelector('.starBtn').addEventListener('click', (ev)=> toggleStar(r));
+      repoList.appendChild(node);
+    });
+  }
+
+  async function openReadme(owner, repoName, repoObj){
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    modalTitle.textContent = repoName;
+    modalBody.innerHTML = '<div class="small">Cargando README…</div>';
+    modal.style.display = 'flex';
+    // intentamos la API para obtener el README en HTML
+    const apiUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repoName)}/readme`;
+    try{
+      const headers = { 'Accept':'application/vnd.github.v3.html' };
+      const token = tokenInput.value.trim();
+      if(token) headers['Authorization'] = 'token ' + token;
+      const res = await fetch(apiUrl, { headers });
+      if(res.ok){
+        const html = await res.text();
+        modalBody.innerHTML = html;
+        return;
+      }
+      // fallback: intentar raw (branch main o master)
+      const rawMain = `https://raw.githubusercontent.com/${owner}/${repoName}/main/README.md`;
+      const rawMaster = `https://raw.githubusercontent.com/${owner}/${repoName}/master/README.md`;
+      let rawRes = await fetch(rawMain);
+      if(!rawRes.ok) rawRes = await fetch(rawMaster);
+      if(rawRes.ok){
+        const md = await rawRes.text();
+        // convertir Markdown simple a HTML básico (solo elementos esenciales)
+        modalBody.innerHTML = markdownToHtml(md);
+        return;
+      }
+      modalBody.innerHTML = '<div class="small">No se encontró README o no se pudo obtener (404).</div>';
+    }catch(e){
+      modalBody.innerHTML = '<div class="small">Error al cargar README: ' + String(e) + '</div>';
+    }
+  }
+
+  // Minimal markdown -> HTML converter (sólo para preview rápido)
+  function markdownToHtml(md){
+    // escape
+    let html = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // headings
+    html = html.replace(/^###### (.*$)/gim,'<h6>$1</h6>');
+    html = html.replace(/^##### (.*$)/gim,'<h5>$1</h5>');
+    html = html.replace(/^#### (.*$)/gim,'<h4>$1</h4>');
+    html = html.replace(/^### (.*$)/gim,'<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gim,'<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gim,'<h1>$1</h1>');
+    // bold & italic
+    html = html.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g,'<em>$1</em>');
+    // links
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+    // code blocks
+    html = html.replace(/```([a-z0-9]*)\n([\s\S]*?)```/gim, function(_,lang,code){ return `<pre><code>${code.replace(/</g,'&lt;')}</code></pre>`; });
+    // inline code
+    html = html.replace(/`([^`]+)`/g,'<code>$1</code>');
+    // lists
+    html = html.replace(/^\s*[-*+] (.*)/gim,'<li>$1</li>');
+    html = html.replace(/(<li>[\s\S]*?<\/li>)/gim,'<ul>$1</ul>');
+    // paragraphs
+    html = html.replace(/^\s*([^<\n].+)\s*$/gim,'<p>$1</p>');
+    return html;
+  }
+
+  document.getElementById('closeModal').addEventListener('click', ()=> {
+    document.getElementById('modal').style.display = 'none';
+  });
+  document.getElementById('modal').addEventListener('click', (ev)=> {
+    if(ev.target.id === 'modal') document.getElementById('modal').style.display = 'none';
+  });
+
+  // Toggle star/unstar using token (requires scope: public_repo or repo for private)
+  async function toggleStar(repo){
+    const token = tokenInput.value.trim();
+    if(!token){
+      // sin token, redirigir a la URL de GitHub para que el usuario haga star manualmente
+      if(confirm('No has pegado un token. ¿Quieres abrir la página de GitHub para hacer star manualmente?')){
+        window.open(repo.html_url, '_blank');
+      }
+      return;
+    }
+    const owner = repo.owner.login;
+    const name = repo.name;
+    const starUrl = `https://api.github.com/user/starred/${owner}/${name}`;
+    try{
+      // comprobar si está starred
+      let r = await fetch(starUrl, { method:'GET', headers:{ Authorization: 'token ' + token } });
+      if(r.status === 204){
+        // ya está starred -> hacer DELETE para unstar
+        const del = await fetch(starUrl, { method:'DELETE', headers:{ Authorization: 'token ' + token } });
+        if(del.status === 204) { alert('Repositorio unstared.'); refreshCurrent(); }
+        else alert('No se pudo unstarear. Código: ' + del.status);
+      } else if (r.status === 404){
+        // no está starred -> hacer PUT para star
+        const put = await fetch(starUrl, { method:'PUT', headers:{ Authorization: 'token ' + token, 'Content-Length': 0 } });
+        if(put.status === 204) { alert('Repositorio starred.'); refreshCurrent(); }
+        else alert('No se pudo starear. Código: ' + put.status);
+      } else if (r.status === 401){
+        alert('Token inválido o sin permisos. Revisa el token.');
+      } else {
+        alert('Respuesta inesperada: ' + r.status);
+      }
+    }catch(e){
+      alert('Error en la API: ' + e);
+    }
+  }
+
+  // refrescar lista actual (simula pulsación de cargar otra vez con los mismos repos almacenados)
+  let lastRepos = null;
+  function refreshCurrent(){
+    if(lastRepos) renderRepos(lastRepos);
+  }
+
+  loadBtn.addEventListener('click', async ()=>{
+    const user = getUsername();
+    repoList.innerHTML = '<div class="small">Cargando repositorios…</div>';
+    try{
+      const repos = await fetchRepos(user);
+      lastRepos = repos;
+      // añadir campo viewer_has_starred? la API de /users/:user/repos no incluye viewer_has_starred
+      // ignoramos eso y dejamos el botón que usa token para comprobar/actuar
+      renderRepos(repos);
+    }catch(e){
+      showError(String(e));
+    }
+  });
+
+  // también permitir buscar en enter
+  qInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') loadBtn.click(); });
+  usernameInput.addEventListener('keydown', (e)=> { if(e.key === 'Enter') loadBtn.click(); });
+})();
+</script>
 </body>
 </html>
